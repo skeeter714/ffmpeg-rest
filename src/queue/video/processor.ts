@@ -13,7 +13,7 @@ const execFileAsync = promisify(execFile);
 const PROCESSING_TIMEOUT = 600000;
 
 export async function processVideoToMp4(job: Job<VideoToMp4JobData>): Promise<JobResult> {
-  const { inputPath, outputPath } = job.data;
+  const { inputPath, outputPath, crf, preset } = job.data;
 
   if (!existsSync(inputPath)) {
     return {
@@ -32,9 +32,9 @@ export async function processVideoToMp4(job: Job<VideoToMp4JobData>): Promise<Jo
       '-codec:v',
       'libx264',
       '-preset',
-      'medium',
+      preset,
       '-crf',
-      '23',
+      crf.toString(),
       '-codec:a',
       'aac',
       '-b:a',

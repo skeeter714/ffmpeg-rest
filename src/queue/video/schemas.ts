@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 export const VideoToMp4JobDataSchema = z.object({
   inputPath: z.string(),
-  outputPath: z.string()
+  outputPath: z.string(),
+  crf: z.number().min(0).max(51).default(23),
+  preset: z.enum(['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow']).default('medium')
 });
 
 export const VideoExtractAudioJobDataSchema = z.object({

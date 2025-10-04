@@ -34,7 +34,9 @@ describe('processVideoToMp4', () => {
     const job = {
       data: {
         inputPath,
-        outputPath
+        outputPath,
+        crf: 23,
+        preset: 'medium' as const
       }
     } as Job<VideoToMp4JobData>;
 
@@ -56,7 +58,9 @@ describe('processVideoToMp4', () => {
     const job = {
       data: {
         inputPath,
-        outputPath
+        outputPath,
+        crf: 23,
+        preset: 'medium' as const
       }
     } as Job<VideoToMp4JobData>;
 
@@ -76,7 +80,9 @@ describe('processVideoToMp4', () => {
     const job = {
       data: {
         inputPath,
-        outputPath
+        outputPath,
+        crf: 23,
+        preset: 'medium' as const
       }
     } as Job<VideoToMp4JobData>;
 
@@ -84,6 +90,32 @@ describe('processVideoToMp4', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
+  });
+
+  it('should convert AVI to MP4 with custom crf and preset', async () => {
+    const inputPath = path.join(FIXTURES_DIR, 'test-video-custom.avi');
+    const outputPath = path.join(TEST_DIR, 'output-fast.mp4');
+
+    createTestAviFile(inputPath);
+
+    const job = {
+      data: {
+        inputPath,
+        outputPath,
+        crf: 28,
+        preset: 'fast' as const
+      }
+    } as Job<VideoToMp4JobData>;
+
+    const result = await processVideoToMp4(job);
+
+    expect(result.success).toBe(true);
+    expect(result.outputPath).toBe(outputPath);
+    expect(existsSync(outputPath)).toBe(true);
+
+    const fileInfo = execSync(`ffprobe -v error -show_format -of json "${outputPath}"`).toString();
+    const metadata = JSON.parse(fileInfo);
+    expect(metadata.format.format_name).toContain('mp4');
   });
 });
 
