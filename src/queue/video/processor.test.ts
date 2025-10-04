@@ -190,7 +190,8 @@ describe('processVideoExtractFrames', () => {
       data: {
         inputPath,
         outputDir,
-        fps: 1
+        fps: 1,
+        format: 'png' as const
       }
     } as Job<VideoExtractFramesJobData>;
 
@@ -217,6 +218,7 @@ describe('processVideoExtractFrames', () => {
         inputPath,
         outputDir,
         fps: 1,
+        format: 'png' as const,
         compress: 'zip' as const
       }
     } as Job<VideoExtractFramesJobData>;
@@ -240,6 +242,7 @@ describe('processVideoExtractFrames', () => {
         inputPath,
         outputDir,
         fps: 1,
+        format: 'png' as const,
         compress: 'gzip' as const
       }
     } as Job<VideoExtractFramesJobData>;
@@ -252,6 +255,34 @@ describe('processVideoExtractFrames', () => {
     expect(existsSync(result.outputPath!)).toBe(true);
   });
 
+  it('should extract frames as JPEG with custom quality', async () => {
+    const inputPath = path.join(FIXTURES_DIR, 'test-video-jpg.avi');
+    const outputDir = path.join(TEST_DIR, 'frames-jpg');
+
+    createTestAviFile(inputPath);
+
+    const job = {
+      data: {
+        inputPath,
+        outputDir,
+        fps: 1,
+        format: 'jpg' as const,
+        quality: 5
+      }
+    } as Job<VideoExtractFramesJobData>;
+
+    const result = await processVideoExtractFrames(job);
+
+    expect(result.success).toBe(true);
+    expect(result.outputPaths).toBeDefined();
+    expect(result.outputPaths!.length).toBeGreaterThan(0);
+    expect(existsSync(outputDir)).toBe(true);
+
+    const files = readdirSync(outputDir);
+    expect(files.length).toBeGreaterThan(0);
+    expect(files.every(f => f.endsWith('.jpg'))).toBe(true);
+  });
+
   it('should return error when input file does not exist', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'non-existent.avi');
     const outputDir = path.join(TEST_DIR, 'frames');
@@ -260,7 +291,8 @@ describe('processVideoExtractFrames', () => {
       data: {
         inputPath,
         outputDir,
-        fps: 1
+        fps: 1,
+        format: 'png' as const
       }
     } as Job<VideoExtractFramesJobData>;
 
@@ -281,7 +313,8 @@ describe('processVideoExtractFrames', () => {
       data: {
         inputPath,
         outputDir,
-        fps: 1
+        fps: 1,
+        format: 'png' as const
       }
     } as Job<VideoExtractFramesJobData>;
 

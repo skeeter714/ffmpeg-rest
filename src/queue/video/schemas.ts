@@ -18,6 +18,8 @@ export const VideoExtractFramesJobDataSchema = z.object({
   inputPath: z.string(),
   outputDir: z.string(),
   fps: z.number().default(1),
+  format: z.enum(['png', 'jpg']).default('png'),
+  quality: z.number().min(1).max(31).optional(),
   compress: z.enum(['zip', 'gzip']).optional()
 });
 

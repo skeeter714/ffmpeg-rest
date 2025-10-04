@@ -141,7 +141,7 @@ export async function processVideoExtractAudio(job: Job<VideoExtractAudioJobData
 }
 
 export async function processVideoExtractFrames(job: Job<VideoExtractFramesJobData>): Promise<JobResult> {
-  const { inputPath, outputDir, fps, compress } = job.data;
+  const { inputPath, outputDir, fps, format, quality, compress } = job.data;
 
   if (!existsSync(inputPath)) {
     return {
@@ -153,20 +153,22 @@ export async function processVideoExtractFrames(job: Job<VideoExtractFramesJobDa
   try {
     await mkdir(outputDir, { recursive: true });
 
-    const outputPattern = path.join(outputDir, 'frame_%04d.png');
+    const ext = format === 'jpg' ? 'jpg' : 'png';
+    const outputPattern = path.join(outputDir, `frame_%04d.${ext}`);
 
-    await execFileAsync('ffmpeg', [
-      '-i',
-      inputPath,
-      '-vf',
-      `fps=${fps}`,
-      '-y',
-      outputPattern
-    ], { timeout: PROCESSING_TIMEOUT });
+    const args = ['-i', inputPath, '-vf', `fps=${fps}`];
+
+    if (format === 'jpg' && quality) {
+      args.push('-q:v', quality.toString());
+    }
+
+    args.push('-y', outputPattern);
+
+    await execFileAsync('ffmpeg', args, { timeout: PROCESSING_TIMEOUT });
 
     const { readdirSync } = await import('fs');
     const frames = readdirSync(outputDir)
-      .filter(f => f.endsWith('.png'))
+      .filter(f => f.endsWith(`.${ext}`))
       .map(f => path.join(outputDir, f));
 
     if (frames.length === 0) {
