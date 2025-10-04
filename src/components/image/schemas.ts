@@ -1,4 +1,4 @@
-import { createRoute } from '@hono/zod-openapi';
+import { createRoute, z } from '@hono/zod-openapi';
 import { FileSchema, ErrorSchema } from '~/utils/schemas';
 
 /**
@@ -12,7 +12,9 @@ export const imageToJpgRoute = createRoute({
     body: {
       content: {
         'multipart/form-data': {
-          schema: FileSchema
+          schema: z.object({
+            file: FileSchema
+          })
         }
       },
       required: true
