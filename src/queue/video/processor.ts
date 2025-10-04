@@ -75,9 +75,9 @@ export async function processVideoExtractAudio(job: Job<VideoExtractAudioJobData
       inputPath,
       '-vn',
       '-acodec',
-      'libmp3lame',
-      '-qscale:a',
-      '2',
+      'pcm_s16le',
+      '-ar',
+      '44100',
       '-ac',
       mono ? '1' : '2'
     ];

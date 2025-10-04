@@ -240,7 +240,7 @@ describe('processVideoExtractAudio', () => {
 
   it('should extract audio as mono by default', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-video-audio.avi');
-    const outputPath = path.join(TEST_DIR, 'audio.mp3');
+    const outputPath = path.join(TEST_DIR, 'audio.wav');
 
     createTestAviFile(inputPath);
 
@@ -261,11 +261,12 @@ describe('processVideoExtractAudio', () => {
     const fileInfo = execSync(`ffprobe -v error -show_streams -select_streams a -of json "${outputPath}"`).toString();
     const metadata = JSON.parse(fileInfo);
     expect(metadata.streams[0].channels).toBe(1);
+    expect(metadata.streams[0].codec_name).toBe('pcm_s16le');
   });
 
   it('should extract audio as stereo when mono is false', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'test-video-stereo.avi');
-    const outputPath = path.join(TEST_DIR, 'audio-stereo.mp3');
+    const outputPath = path.join(TEST_DIR, 'audio-stereo.wav');
 
     createTestAviFile(inputPath);
 
@@ -286,11 +287,12 @@ describe('processVideoExtractAudio', () => {
     const fileInfo = execSync(`ffprobe -v error -show_streams -select_streams a -of json "${outputPath}"`).toString();
     const metadata = JSON.parse(fileInfo);
     expect(metadata.streams[0].channels).toBe(2);
+    expect(metadata.streams[0].codec_name).toBe('pcm_s16le');
   });
 
   it('should return error when input file does not exist', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'non-existent.avi');
-    const outputPath = path.join(TEST_DIR, 'audio.mp3');
+    const outputPath = path.join(TEST_DIR, 'audio.wav');
 
     const job = {
       data: {
@@ -309,7 +311,7 @@ describe('processVideoExtractAudio', () => {
 
   it('should handle invalid video files gracefully', async () => {
     const inputPath = path.join(FIXTURES_DIR, 'invalid-video.avi');
-    const outputPath = path.join(TEST_DIR, 'audio.mp3');
+    const outputPath = path.join(TEST_DIR, 'audio.wav');
 
     writeFileSync(inputPath, 'This is not a valid video file');
 
