@@ -7,6 +7,8 @@ import { existsSync } from 'fs';
 
 const execFileAsync = promisify(execFile);
 
+const PROCESSING_TIMEOUT = 600000;
+
 export async function processMediaProbe(job: Job<MediaProbeJobData>): Promise<JobResult> {
   const { inputPath } = job.data;
 
@@ -26,7 +28,7 @@ export async function processMediaProbe(job: Job<MediaProbeJobData>): Promise<Jo
       '-show_format',
       '-show_streams',
       inputPath
-    ]);
+    ], { timeout: PROCESSING_TIMEOUT });
 
     const metadata = JSON.parse(stdout);
 

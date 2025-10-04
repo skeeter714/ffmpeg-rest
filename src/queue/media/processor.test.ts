@@ -40,9 +40,9 @@ describe('processMediaProbe', () => {
 
     expect(result.success).toBe(true);
     expect(result.metadata).toBeDefined();
-    expect(result.metadata?.format).toBeDefined();
-    expect(result.metadata?.streams).toBeDefined();
-    expect(Array.isArray(result.metadata?.streams)).toBe(true);
+    expect(result.metadata?.['format']).toBeDefined();
+    expect(result.metadata?.['streams']).toBeDefined();
+    expect(Array.isArray(result.metadata?.['streams'])).toBe(true);
   });
 
   it('should probe audio file and return metadata', async () => {
@@ -60,8 +60,10 @@ describe('processMediaProbe', () => {
 
     expect(result.success).toBe(true);
     expect(result.metadata).toBeDefined();
-    expect(result.metadata?.format).toBeDefined();
-    expect(result.metadata?.format?.format_name).toContain('mp3');
+    expect(result.metadata?.['format']).toBeDefined();
+
+    const metadata = result.metadata as any;
+    expect(metadata?.format?.format_name).toContain('mp3');
   });
 
   it('should return error when input file does not exist', async () => {

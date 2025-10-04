@@ -10,6 +10,8 @@ import path from 'path';
 
 const execFileAsync = promisify(execFile);
 
+const PROCESSING_TIMEOUT = 600000;
+
 export async function processVideoToMp4(job: Job<VideoToMp4JobData>): Promise<JobResult> {
   const { inputPath, outputPath } = job.data;
 
@@ -41,7 +43,7 @@ export async function processVideoToMp4(job: Job<VideoToMp4JobData>): Promise<Jo
       '+faststart',
       '-y',
       outputPath
-    ]);
+    ], { timeout: PROCESSING_TIMEOUT });
 
     return {
       success: true,
@@ -86,7 +88,7 @@ export async function processVideoExtractAudio(job: Job<VideoExtractAudioJobData
 
     args.push('-y', outputPath);
 
-    await execFileAsync('ffmpeg', args);
+    await execFileAsync('ffmpeg', args, { timeout: PROCESSING_TIMEOUT });
 
     return {
       success: true,
@@ -123,7 +125,7 @@ export async function processVideoExtractFrames(job: Job<VideoExtractFramesJobDa
       `fps=${fps}`,
       '-y',
       outputPattern
-    ]);
+    ], { timeout: PROCESSING_TIMEOUT });
 
     const { readdirSync } = await import('fs');
     const frames = readdirSync(outputDir)
@@ -148,8 +150,8 @@ export async function processVideoExtractFrames(job: Job<VideoExtractFramesJobDa
       archive.directory(outputDir, false);
       await archive.finalize();
 
-      await new Promise((resolve, reject) => {
-        output.on('close', resolve);
+      await new Promise<void>((resolve, reject) => {
+        output.on('close', () => resolve());
         output.on('error', reject);
       });
 

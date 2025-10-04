@@ -9,6 +9,8 @@ import { dirname } from 'path';
 
 const execFileAsync = promisify(execFile);
 
+const PROCESSING_TIMEOUT = 600000;
+
 export async function processImageToJpg(job: Job<ImageToJpgJobData>): Promise<JobResult> {
   const { inputPath, outputPath } = job.data;
 
@@ -30,7 +32,7 @@ export async function processImageToJpg(job: Job<ImageToJpgJobData>): Promise<Jo
       '2',
       '-y',
       outputPath
-    ]);
+    ], { timeout: PROCESSING_TIMEOUT });
 
     return {
       success: true,

@@ -9,6 +9,8 @@ import { dirname } from 'path';
 
 const execFileAsync = promisify(execFile);
 
+const PROCESSING_TIMEOUT = 600000;
+
 export async function processAudioToMp3(job: Job<AudioToMp3JobData>): Promise<JobResult> {
   const { inputPath, outputPath } = job.data;
 
@@ -32,7 +34,7 @@ export async function processAudioToMp3(job: Job<AudioToMp3JobData>): Promise<Jo
       '2',
       '-y',
       outputPath
-    ]);
+    ], { timeout: PROCESSING_TIMEOUT });
 
     return {
       success: true,
@@ -70,7 +72,7 @@ export async function processAudioToWav(job: Job<AudioToWavJobData>): Promise<Jo
       '44100',
       '-y',
       outputPath
-    ]);
+    ], { timeout: PROCESSING_TIMEOUT });
 
     return {
       success: true,
