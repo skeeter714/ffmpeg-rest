@@ -1,4 +1,4 @@
-import { createRoute } from '@hono/zod-openapi';
+import { createRoute, z } from '@hono/zod-openapi';
 import { FileSchema, ErrorSchema, ProbeResponseSchema } from '~/utils/schemas';
 
 /**
@@ -12,7 +12,9 @@ export const probeMediaRoute = createRoute({
     body: {
       content: {
         'multipart/form-data': {
-          schema: FileSchema
+          schema: z.object({
+            file: FileSchema
+          })
         }
       },
       required: true
