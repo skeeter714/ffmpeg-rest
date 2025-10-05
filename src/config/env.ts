@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import dotenv from 'dotenv';
 
-dotenv.config();
+if (process.env['NODE_ENV'] !== 'production') {
+  const dotenv = await import('dotenv');
+  dotenv.config();
+}
 
 const schema = z.object({
   PORT: z.coerce.number().default(3000),
