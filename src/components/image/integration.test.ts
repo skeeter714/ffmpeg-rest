@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { setupIntegrationTests, teardownIntegrationTests, getApiUrl } from '~/test-utils/integration-setup';
+import { setupIntegrationTests, teardownIntegrationTests, getApiUrl, getLocalStackContainer } from '~/test-utils/integration-setup';
 import { readFile } from 'fs/promises';
 import path from 'path';
+import { S3Client, CreateBucketCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 describe('Image Conversion Integration', () => {
   beforeAll(async () => {
@@ -46,4 +47,74 @@ describe('Image Conversion Integration', () => {
 
     expect(response.status).toBeGreaterThanOrEqual(400);
   }, 30000);
+});
+
+describe('Image Conversion Integration - S3 Mode', () => {
+  let s3Client: S3Client;
+  const TEST_BUCKET = 'test-ffmpeg-bucket';
+
+  beforeAll(async () => {
+    await setupIntegrationTests({ s3Mode: true });
+
+    const container = getLocalStackContainer();
+    const endpoint = container.getConnectionUri();
+
+    s3Client = new S3Client({
+      endpoint,
+      forcePathStyle: true,
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId: 'test',
+        secretAccessKey: 'test'
+      }
+    });
+
+    await s3Client.send(new CreateBucketCommand({ Bucket: TEST_BUCKET }));
+  }, 180000);
+
+  afterAll(async () => {
+    await teardownIntegrationTests();
+  });
+
+  it('should convert PNG to JPG and upload to S3', async () => {
+    const apiUrl = getApiUrl();
+    const testImagePath = path.join(__dirname, '../../../test-image.png');
+    const imageBuffer = await readFile(testImagePath);
+
+    const formData = new FormData();
+    const blob = new Blob([new Uint8Array(imageBuffer)], { type: 'image/png' });
+    formData.append('file', blob, 'test-image.png');
+
+    const response = await fetch(`${apiUrl}/image/jpg/url`, {
+      method: 'POST',
+      body: formData
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json).toHaveProperty('url');
+    expect(json.url).toContain('test-media/');
+    expect(json.url).toContain('.jpg');
+
+    const key = json.url.split(`${TEST_BUCKET}/`)[1];
+    const headResult = await s3Client.send(new HeadObjectCommand({
+      Bucket: TEST_BUCKET,
+      Key: key
+    }));
+    expect(headResult.ContentType).toBe('image/jpeg');
+  }, 60000);
+
+  it('should reject invalid file', async () => {
+    const apiUrl = getApiUrl();
+    const formData = new FormData();
+    const blob = new Blob(['not an image file'], { type: 'text/plain' });
+    formData.append('file', blob, 'test.txt');
+
+    const response = await fetch(`${apiUrl}/image/jpg/url`, {
+      method: 'POST',
+      body: formData
+    });
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+  }, 60000);
 });
