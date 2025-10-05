@@ -1,9 +1,10 @@
-import { GenericContainer, Wait, type StartedTestContainer } from 'testcontainers';
+import { GenericContainer, Wait, type StartedTestContainer, Network, type StartedNetwork } from 'testcontainers';
 import { RedisContainer, type StartedRedisContainer } from '@testcontainers/redis';
 import path from 'path';
 
 let redisContainer: StartedRedisContainer;
 let appContainer: StartedTestContainer;
+let network: StartedNetwork;
 let apiUrl: string;
 
 export async function setupIntegrationTests() {
@@ -11,20 +12,27 @@ export async function setupIntegrationTests() {
     return { apiUrl, appContainer, redisContainer };
   }
 
+  console.log('Creating network...');
+  network = await new Network().start();
+
   console.log('Starting Redis container...');
-  redisContainer = await new RedisContainer('redis:7.4-alpine').start();
+  redisContainer = await new RedisContainer('redis:7.4-alpine')
+    .withNetwork(network)
+    .withNetworkAliases('redis')
+    .start();
 
   console.log('Building application image...');
   const imageName = 'ffmpeg-rest-test';
 
   await GenericContainer.fromDockerfile(path.join(__dirname, '../..'))
     .withPlatform('linux/amd64')
-    .build(imageName);
+    .build(imageName, { deleteOnExit: false });
 
   console.log('Starting application container...');
   appContainer = await new GenericContainer(imageName)
+    .withNetwork(network)
     .withEnvironment({
-      REDIS_URL: redisContainer.getConnectionUrl(),
+      REDIS_URL: 'redis://redis:6379',
       STORAGE_MODE: 'stateless',
       NODE_ENV: 'test'
     })
@@ -41,6 +49,7 @@ export async function setupIntegrationTests() {
 export async function teardownIntegrationTests() {
   await appContainer?.stop();
   await redisContainer?.stop();
+  await network?.stop();
 }
 
 export function getApiUrl() {

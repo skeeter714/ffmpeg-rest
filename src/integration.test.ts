@@ -20,10 +20,11 @@ describe('FFmpeg REST API Integration', () => {
     expect(output).toContain('ffmpeg version');
   }, 30000);
 
-  it('should return health check on root endpoint', async () => {
+  it('should return API documentation on root endpoint', async () => {
     const response = await fetch(`${apiUrl}/`);
     expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data).toHaveProperty('status', 'ok');
+    expect(response.headers.get('content-type')).toContain('text/html');
+    const html = await response.text();
+    expect(html).toContain('FFmpeg REST API');
   }, 10000);
 });
