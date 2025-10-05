@@ -4,8 +4,10 @@ import type { AudioToMp3JobData, AudioToWavJobData } from './schemas';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
-import { mkdir } from 'fs/promises';
-import { dirname } from 'path';
+import { mkdir, rm } from 'fs/promises';
+import { dirname, basename } from 'path';
+import { env } from '~/config/env';
+import { uploadToS3 } from '~/utils/storage';
 
 const execFileAsync = promisify(execFile);
 
@@ -35,6 +37,15 @@ export async function processAudioToMp3(job: Job<AudioToMp3JobData>): Promise<Jo
       '-y',
       outputPath
     ], { timeout: PROCESSING_TIMEOUT });
+
+    if (env.STORAGE_MODE === 's3') {
+      const { url } = await uploadToS3(outputPath, 'audio/mpeg', basename(outputPath));
+      await rm(outputPath, { force: true });
+      return {
+        success: true,
+        outputUrl: url
+      };
+    }
 
     return {
       success: true,
@@ -73,6 +84,15 @@ export async function processAudioToWav(job: Job<AudioToWavJobData>): Promise<Jo
       '-y',
       outputPath
     ], { timeout: PROCESSING_TIMEOUT });
+
+    if (env.STORAGE_MODE === 's3') {
+      const { url } = await uploadToS3(outputPath, 'audio/wav', basename(outputPath));
+      await rm(outputPath, { force: true });
+      return {
+        success: true,
+        outputUrl: url
+      };
+    }
 
     return {
       success: true,
