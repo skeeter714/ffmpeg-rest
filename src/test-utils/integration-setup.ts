@@ -4,7 +4,8 @@ import { LocalstackContainer, type StartedLocalStackContainer } from '@testconta
 import { S3Client, CreateBucketCommand } from '@aws-sdk/client-s3';
 import path from 'path';
 
-const IMAGE_NAME = 'ffmpeg-rest-test';
+const CUSTOM_IMAGE_NAME = process.env['FFMPEG_REST_TEST_IMAGE'];
+const IMAGE_NAME = CUSTOM_IMAGE_NAME ?? 'ffmpeg-rest-test';
 const REDIS_ALIAS = 'redis';
 const LOCALSTACK_ALIAS = 'localstack';
 
@@ -57,7 +58,7 @@ const environmentStates: Record<IntegrationMode, EnvironmentState> = {
 };
 
 let imageBuildPromise: Promise<void> | null = null;
-let imageBuilt = false;
+let imageBuilt = Boolean(CUSTOM_IMAGE_NAME);
 
 export async function setupIntegrationTests(options?: { s3Mode?: boolean }): Promise<IntegrationSetupResult> {
   const mode: IntegrationMode = options?.s3Mode ? 's3' : 'stateless';
@@ -248,6 +249,10 @@ async function teardownMode(state: EnvironmentState) {
 }
 
 async function ensureImageBuilt() {
+  if (CUSTOM_IMAGE_NAME) {
+    return;
+  }
+
   if (imageBuilt) {
     return;
   }
