@@ -4,10 +4,7 @@ import { existsSync, mkdirSync, rmSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import { Worker } from 'bullmq';
-import { connection } from '~/config/redis';
-import { QUEUE_NAME, JobType } from '~/queue';
-import type { JobResult } from '~/queue';
-import { processAudioToMp3, processAudioToWav } from '~/queue/audio/processor';
+import { createTestWorker } from '~/test-utils/worker';
 
 const TEST_DIR = path.join(process.cwd(), 'test-outputs', 'audio-controller');
 const FIXTURES_DIR = path.join(process.cwd(), 'test-fixtures', 'audio-controller');
@@ -21,20 +18,7 @@ describe('Audio Controller', () => {
       mkdirSync(FIXTURES_DIR, { recursive: true });
     }
 
-    worker = new Worker<unknown, JobResult>(
-      QUEUE_NAME,
-      async (job) => {
-        switch (job.name) {
-          case JobType.AUDIO_TO_MP3:
-            return processAudioToMp3(job as never);
-          case JobType.AUDIO_TO_WAV:
-            return processAudioToWav(job as never);
-          default:
-            throw new Error(`Unknown job type: ${job.name}`);
-        }
-      },
-      { connection }
-    );
+    worker = createTestWorker();
   });
 
   afterAll(async () => {

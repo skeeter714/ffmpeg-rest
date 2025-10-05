@@ -4,10 +4,7 @@ import { existsSync, mkdirSync, rmSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import { Worker } from 'bullmq';
-import { connection } from '~/config/redis';
-import { QUEUE_NAME, JobType } from '~/queue';
-import type { JobResult } from '~/queue';
-import { processVideoToMp4, processVideoExtractAudio, processVideoExtractFrames } from '~/queue/video/processor';
+import { createTestWorker } from '~/test-utils/worker';
 
 const TEST_DIR = path.join(process.cwd(), 'test-outputs', 'video-controller');
 const FIXTURES_DIR = path.join(process.cwd(), 'test-fixtures', 'video-controller');
@@ -21,22 +18,7 @@ describe('Video Controller', () => {
       mkdirSync(FIXTURES_DIR, { recursive: true });
     }
 
-    worker = new Worker<unknown, JobResult>(
-      QUEUE_NAME,
-      async (job) => {
-        switch (job.name) {
-          case JobType.VIDEO_TO_MP4:
-            return processVideoToMp4(job as never);
-          case JobType.VIDEO_EXTRACT_AUDIO:
-            return processVideoExtractAudio(job as never);
-          case JobType.VIDEO_EXTRACT_FRAMES:
-            return processVideoExtractFrames(job as never);
-          default:
-            throw new Error(`Unknown job type: ${job.name}`);
-        }
-      },
-      { connection }
-    );
+    worker = createTestWorker();
   });
 
   afterAll(async () => {

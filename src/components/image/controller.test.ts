@@ -4,10 +4,7 @@ import { existsSync, mkdirSync, rmSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
 import { Worker } from 'bullmq';
-import { connection } from '~/config/redis';
-import { QUEUE_NAME, JobType } from '~/queue';
-import type { JobResult } from '~/queue';
-import { processImageToJpg } from '~/queue/image/processor';
+import { createTestWorker } from '~/test-utils/worker';
 
 const TEST_DIR = path.join(process.cwd(), 'test-outputs', 'image-controller');
 const FIXTURES_DIR = path.join(process.cwd(), 'test-fixtures', 'image-controller');
@@ -21,18 +18,7 @@ describe('Image Controller', () => {
       mkdirSync(FIXTURES_DIR, { recursive: true });
     }
 
-    worker = new Worker<unknown, JobResult>(
-      QUEUE_NAME,
-      async (job) => {
-        switch (job.name) {
-          case JobType.IMAGE_TO_JPG:
-            return processImageToJpg(job as never);
-          default:
-            throw new Error(`Unknown job type: ${job.name}`);
-        }
-      },
-      { connection }
-    );
+    worker = createTestWorker();
   });
 
   afterAll(async () => {
