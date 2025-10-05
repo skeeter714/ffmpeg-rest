@@ -24,7 +24,9 @@ const schema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   S3_PUBLIC_URL: z.string().optional(),
-  S3_PATH_PREFIX: z.string().default('ffmpeg-rest')
+  S3_PATH_PREFIX: z.string().default('ffmpeg-rest'),
+
+  AUTH_TOKEN: z.string().optional()
 });
 
 export const env = schema.parse(process.env);

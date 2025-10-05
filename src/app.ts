@@ -1,6 +1,9 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { Scalar } from '@scalar/hono-api-reference';
 import { createMarkdownFromOpenApi } from '@scalar/openapi-to-markdown';
+import { bearerAuth } from 'hono/bearer-auth';
+import { env } from '~/config/env';
+import { logger } from '~/config/logger';
 import { registerApiRoutes } from '~/components/api/controller';
 import { registerAudioRoutes } from '~/components/audio/controller';
 import { registerVideoRoutes } from '~/components/video/controller';
@@ -9,6 +12,13 @@ import { registerMediaRoutes } from '~/components/media/controller';
 
 export function createApp() {
   const app = new OpenAPIHono();
+
+  if (env.AUTH_TOKEN) {
+    logger.info('🔒 Bearer authentication enabled');
+    app.use('/*', bearerAuth({ token: env.AUTH_TOKEN }));
+  } else {
+    logger.warn('⚠️  Authentication disabled - set AUTH_TOKEN to enable');
+  }
 
   registerApiRoutes(app);
   registerAudioRoutes(app);
