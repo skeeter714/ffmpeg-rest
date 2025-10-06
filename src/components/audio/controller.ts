@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { audioToMp3Route, audioToMp3UrlRoute, audioToWavRoute, audioToWavUrlRoute } from './schemas';
-import { addJob, JobType, queueEvents } from '~/queue';
+import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
 import { mkdir, writeFile, readFile, rm } from 'fs/promises';
 import { randomUUID } from 'crypto';
@@ -27,7 +27,8 @@ export function registerAudioRoutes(app: OpenAPIHono) {
         quality: 2
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputPath) {
         await rm(jobDir, { recursive: true, force: true });
@@ -66,7 +67,8 @@ export function registerAudioRoutes(app: OpenAPIHono) {
         outputPath
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputPath) {
         await rm(jobDir, { recursive: true, force: true });
@@ -110,7 +112,8 @@ export function registerAudioRoutes(app: OpenAPIHono) {
         quality: 2
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputUrl) {
         await rm(jobDir, { recursive: true, force: true });
@@ -148,7 +151,8 @@ export function registerAudioRoutes(app: OpenAPIHono) {
         outputPath
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputUrl) {
         await rm(jobDir, { recursive: true, force: true });

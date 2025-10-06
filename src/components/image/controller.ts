@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { imageToJpgRoute, imageToJpgUrlRoute } from './schemas';
-import { addJob, JobType, queueEvents } from '~/queue';
+import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
 import { logger } from '~/config/logger';
 import { mkdir, writeFile, readFile, rm } from 'fs/promises';
@@ -28,7 +28,8 @@ export function registerImageRoutes(app: OpenAPIHono) {
         quality: 2
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputPath) {
         await rm(jobDir, { recursive: true, force: true });
@@ -79,7 +80,8 @@ export function registerImageRoutes(app: OpenAPIHono) {
       });
       logger.info({ jobId: job.id }, 'Job added to queue');
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
       const duration = Date.now() - startTime;
       logger.info({ jobId: job.id, duration }, 'Job finished');
 

@@ -8,7 +8,7 @@ import {
   extractFramesUrlRoute,
   downloadFrameRoute
 } from './schemas';
-import { addJob, JobType, queueEvents } from '~/queue';
+import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
 import { mkdir, writeFile, readFile, rm } from 'fs/promises';
 import { randomUUID } from 'crypto';
@@ -37,7 +37,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         smartCopy: true
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputPath) {
         await rm(jobDir, { recursive: true, force: true });
@@ -79,7 +80,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         mono
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputPath) {
         await rm(jobDir, { recursive: true, force: true });
@@ -134,7 +136,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         compress
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputPath) {
         await rm(jobDir, { recursive: true, force: true });
@@ -183,7 +186,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         smartCopy: true
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputUrl) {
         await rm(jobDir, { recursive: true, force: true });
@@ -224,7 +228,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         mono
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputUrl) {
         await rm(jobDir, { recursive: true, force: true });
@@ -278,7 +283,8 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         compress
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       if (!result.success || !result.outputUrl) {
         await rm(jobDir, { recursive: true, force: true });

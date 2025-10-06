@@ -1,4 +1,5 @@
 import { Queue, QueueEvents } from 'bullmq';
+import { z } from 'zod';
 import { connection } from '~/config/redis';
 import { logger } from '~/config/logger';
 
@@ -14,15 +15,17 @@ export const JobType = {
 
 export type JobTypeName = (typeof JobType)[keyof typeof JobType];
 
-export interface JobResult {
-  success: boolean;
-  outputPath?: string;
-  outputPaths?: string[];
-  outputUrl?: string;
-  outputUrls?: string[];
-  metadata?: Record<string, unknown>;
-  error?: string;
-}
+export const JobResultSchema = z.object({
+  success: z.boolean(),
+  outputPath: z.string().optional(),
+  outputPaths: z.array(z.string()).optional(),
+  outputUrl: z.url().optional(),
+  outputUrls: z.array(z.url()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  error: z.string().optional()
+});
+
+export type JobResult = z.infer<typeof JobResultSchema>;
 
 export const QUEUE_NAME = 'ffmpeg-jobs';
 
@@ -58,5 +61,14 @@ export const addJob = async (name: string, data: unknown) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error({ jobType: name, error: errorMessage }, 'Failed to add job');
     throw error;
+  }
+};
+
+export const validateJobResult = (result: unknown): JobResult => {
+  try {
+    return JobResultSchema.parse(result);
+  } catch (error) {
+    logger.error({ error, result }, 'Job result validation failed');
+    throw new Error('Invalid job result format from queue');
   }
 };

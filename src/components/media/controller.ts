@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { probeMediaRoute } from './schemas';
-import { addJob, JobType, queueEvents } from '~/queue';
+import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
 import { env } from '~/config/env';
 import { mkdir, writeFile, rm } from 'fs/promises';
 import { randomUUID } from 'crypto';
@@ -24,7 +24,8 @@ export function registerMediaRoutes(app: OpenAPIHono) {
         inputPath
       });
 
-      const result = await job.waitUntilFinished(queueEvents);
+      const rawResult = await job.waitUntilFinished(queueEvents);
+      const result = validateJobResult(rawResult);
 
       await rm(jobDir, { recursive: true, force: true });
 
