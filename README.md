@@ -7,7 +7,7 @@ A REST API that wraps FFmpeg for media processing operations. Built with Node.js
 </p>
 
 <p align="center">
-  <a href="https://railway.com/deploy/cS-8cr?referralCode=crisog">
+  <a href="https://railway.com/deploy/ffmpeg-rest-api?referralCode=crisog">
     <img src="https://railway.app/button.svg" alt="Deploy on Railway">
   </a>
 </p>
