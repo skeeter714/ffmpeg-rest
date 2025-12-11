@@ -122,3 +122,7 @@ Every endpoint is fully documented with request/response schemas, validation rul
    npm run build
    npm start
    ```
+
+## Contribution Policy
+
+FFmpeg REST is open source but only accepting contributions for bug fixes.
