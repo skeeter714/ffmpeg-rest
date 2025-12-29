@@ -8,49 +8,39 @@ import {
   extractFramesUrlRoute,
   downloadFrameRoute
 } from './schemas';
-import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
+import { JobType } from '~/queue';
 import { env } from '~/config/env';
-import { mkdir, writeFile, readFile, rm } from 'fs/promises';
-import { randomUUID } from 'crypto';
-import path from 'path';
+import { processMediaJob, getOutputFilename } from '~/utils/job-handler';
 
 export function registerVideoRoutes(app: OpenAPIHono) {
   app.openapi(videoToMp4Route, async (c) => {
     try {
       const { file } = c.req.valid('form');
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.mp4');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.VIDEO_TO_MP4, {
-        inputPath,
-        outputPath,
-        crf: 23,
-        preset: 'medium',
-        smartCopy: true
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.VIDEO_TO_MP4,
+        outputExtension: 'mp4',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath,
+          crf: 23,
+          preset: 'medium',
+          smartCopy: true
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputPath) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Conversion failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      const outputBuffer = await readFile(result.outputPath);
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputBuffer) {
+        return c.json({ error: 'Conversion failed' }, 400);
+      }
 
-      return c.body(new Uint8Array(outputBuffer), 200, {
+      return c.body(new Uint8Array(result.outputBuffer), 200, {
         'Content-Type': 'video/mp4',
-        'Content-Disposition': `attachment; filename="${file.name.replace(/\.[^.]+$/, '')}.mp4"`
+        'Content-Disposition': `attachment; filename="${getOutputFilename(file.name, 'mp4')}"`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -64,36 +54,28 @@ export function registerVideoRoutes(app: OpenAPIHono) {
       const query = c.req.valid('query');
       const mono = query.mono === 'yes';
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.wav');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.VIDEO_EXTRACT_AUDIO, {
-        inputPath,
-        outputPath,
-        mono
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.VIDEO_EXTRACT_AUDIO,
+        outputExtension: 'wav',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath,
+          mono
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputPath) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Audio extraction failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      const outputBuffer = await readFile(result.outputPath);
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputBuffer) {
+        return c.json({ error: 'Audio extraction failed' }, 400);
+      }
 
-      return c.body(new Uint8Array(outputBuffer), 200, {
+      return c.body(new Uint8Array(result.outputBuffer), 200, {
         'Content-Type': 'audio/wav',
-        'Content-Disposition': `attachment; filename="${file.name.replace(/\.[^.]+$/, '')}.wav"`
+        'Content-Disposition': `attachment; filename="${getOutputFilename(file.name, 'wav')}"`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -118,41 +100,33 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         );
       }
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      const outputDir = path.join(jobDir, 'frames');
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.VIDEO_EXTRACT_FRAMES, {
-        inputPath,
-        outputDir,
-        fps,
-        format: 'png',
-        compress
-      });
-
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputPath) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Frame extraction failed' }, 400);
-      }
-
-      const outputBuffer = await readFile(result.outputPath);
-      await rm(jobDir, { recursive: true, force: true });
-
-      const contentType = compress === 'zip' ? 'application/zip' : 'application/gzip';
       const extension = compress === 'zip' ? 'zip' : 'tar.gz';
 
-      return c.body(new Uint8Array(outputBuffer), 200, {
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.VIDEO_EXTRACT_FRAMES,
+        outputExtension: extension,
+        jobData: ({ inputPath, jobDir }) => ({
+          inputPath,
+          outputDir: `${jobDir}/frames`,
+          fps,
+          format: 'png',
+          compress
+        })
+      });
+
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
+      }
+
+      if (!result.outputBuffer) {
+        return c.json({ error: 'Frame extraction failed' }, 400);
+      }
+
+      const contentType = compress === 'zip' ? 'application/zip' : 'application/gzip';
+      return c.body(new Uint8Array(result.outputBuffer), 200, {
         'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${file.name.replace(/\.[^.]+$/, '')}_frames.${extension}"`
+        'Content-Disposition': `attachment; filename="${getOutputFilename(file.name, '')}_frames.${extension}"`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -168,33 +142,27 @@ export function registerVideoRoutes(app: OpenAPIHono) {
 
       const { file } = c.req.valid('form');
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.mp4');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.VIDEO_TO_MP4, {
-        inputPath,
-        outputPath,
-        crf: 23,
-        preset: 'medium',
-        smartCopy: true
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.VIDEO_TO_MP4,
+        outputExtension: 'mp4',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath,
+          crf: 23,
+          preset: 'medium',
+          smartCopy: true
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputUrl) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Conversion failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputUrl) {
+        return c.json({ error: 'Conversion failed' }, 400);
+      }
+
       return c.json({ url: result.outputUrl }, 200);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -212,31 +180,25 @@ export function registerVideoRoutes(app: OpenAPIHono) {
       const query = c.req.valid('query');
       const mono = query.mono === 'yes';
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.wav');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.VIDEO_EXTRACT_AUDIO, {
-        inputPath,
-        outputPath,
-        mono
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.VIDEO_EXTRACT_AUDIO,
+        outputExtension: 'wav',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath,
+          mono
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputUrl) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Audio extraction failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputUrl) {
+        return c.json({ error: 'Audio extraction failed' }, 400);
+      }
+
       return c.json({ url: result.outputUrl }, 200);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -265,33 +227,29 @@ export function registerVideoRoutes(app: OpenAPIHono) {
         );
       }
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      const outputDir = path.join(jobDir, 'frames');
-      await mkdir(jobDir, { recursive: true });
+      const extension = compress === 'zip' ? 'zip' : 'tar.gz';
 
-      const inputPath = path.join(jobDir, 'input');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.VIDEO_EXTRACT_FRAMES, {
-        inputPath,
-        outputDir,
-        fps,
-        format: 'png',
-        compress
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.VIDEO_EXTRACT_FRAMES,
+        outputExtension: extension,
+        jobData: ({ inputPath, jobDir }) => ({
+          inputPath,
+          outputDir: `${jobDir}/frames`,
+          fps,
+          format: 'png',
+          compress
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputUrl) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Frame extraction failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputUrl) {
+        return c.json({ error: 'Frame extraction failed' }, 400);
+      }
+
       return c.json({ url: result.outputUrl }, 200);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

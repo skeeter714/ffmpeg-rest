@@ -1,46 +1,36 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { audioToMp3Route, audioToMp3UrlRoute, audioToWavRoute, audioToWavUrlRoute } from './schemas';
-import { addJob, JobType, queueEvents, validateJobResult } from '~/queue';
+import { JobType } from '~/queue';
 import { env } from '~/config/env';
-import { mkdir, writeFile, readFile, rm } from 'fs/promises';
-import { randomUUID } from 'crypto';
-import path from 'path';
+import { processMediaJob, getOutputFilename } from '~/utils/job-handler';
 
 export function registerAudioRoutes(app: OpenAPIHono) {
   app.openapi(audioToMp3Route, async (c) => {
     try {
       const { file } = c.req.valid('form');
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.mp3');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.AUDIO_TO_MP3, {
-        inputPath,
-        outputPath,
-        quality: 2
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.AUDIO_TO_MP3,
+        outputExtension: 'mp3',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath,
+          quality: 2
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputPath) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Conversion failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      const outputBuffer = await readFile(result.outputPath);
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputBuffer) {
+        return c.json({ error: 'Conversion failed' }, 400);
+      }
 
-      return c.body(new Uint8Array(outputBuffer), 200, {
+      return c.body(new Uint8Array(result.outputBuffer), 200, {
         'Content-Type': 'audio/mpeg',
-        'Content-Disposition': `attachment; filename="${file.name.replace(/\.[^.]+$/, '')}.mp3"`
+        'Content-Disposition': `attachment; filename="${getOutputFilename(file.name, 'mp3')}"`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -52,35 +42,27 @@ export function registerAudioRoutes(app: OpenAPIHono) {
     try {
       const { file } = c.req.valid('form');
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.wav');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.AUDIO_TO_WAV, {
-        inputPath,
-        outputPath
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.AUDIO_TO_WAV,
+        outputExtension: 'wav',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputPath) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Conversion failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      const outputBuffer = await readFile(result.outputPath);
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputBuffer) {
+        return c.json({ error: 'Conversion failed' }, 400);
+      }
 
-      return c.body(new Uint8Array(outputBuffer), 200, {
+      return c.body(new Uint8Array(result.outputBuffer), 200, {
         'Content-Type': 'audio/wav',
-        'Content-Disposition': `attachment; filename="${file.name.replace(/\.[^.]+$/, '')}.wav"`
+        'Content-Disposition': `attachment; filename="${getOutputFilename(file.name, 'wav')}"`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -96,31 +78,25 @@ export function registerAudioRoutes(app: OpenAPIHono) {
 
       const { file } = c.req.valid('form');
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.mp3');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.AUDIO_TO_MP3, {
-        inputPath,
-        outputPath,
-        quality: 2
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.AUDIO_TO_MP3,
+        outputExtension: 'mp3',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath,
+          quality: 2
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputUrl) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Conversion failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputUrl) {
+        return c.json({ error: 'Conversion failed' }, 400);
+      }
+
       return c.json({ url: result.outputUrl }, 200);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -136,30 +112,24 @@ export function registerAudioRoutes(app: OpenAPIHono) {
 
       const { file } = c.req.valid('form');
 
-      const jobId = randomUUID();
-      const jobDir = path.join(env.TEMP_DIR, jobId);
-      await mkdir(jobDir, { recursive: true });
-
-      const inputPath = path.join(jobDir, 'input');
-      const outputPath = path.join(jobDir, 'output.wav');
-
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(inputPath, Buffer.from(arrayBuffer));
-
-      const job = await addJob(JobType.AUDIO_TO_WAV, {
-        inputPath,
-        outputPath
+      const result = await processMediaJob({
+        file,
+        jobType: JobType.AUDIO_TO_WAV,
+        outputExtension: 'wav',
+        jobData: ({ inputPath, outputPath }) => ({
+          inputPath,
+          outputPath
+        })
       });
 
-      const rawResult = await job.waitUntilFinished(queueEvents);
-      const result = validateJobResult(rawResult);
-
-      if (!result.success || !result.outputUrl) {
-        await rm(jobDir, { recursive: true, force: true });
-        return c.json({ error: result.error || 'Conversion failed' }, 400);
+      if (!result.success) {
+        return c.json({ error: result.error }, 400);
       }
 
-      await rm(jobDir, { recursive: true, force: true });
+      if (!result.outputUrl) {
+        return c.json({ error: 'Conversion failed' }, 400);
+      }
+
       return c.json({ url: result.outputUrl }, 200);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
