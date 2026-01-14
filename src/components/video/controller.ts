@@ -26,7 +26,7 @@ export function registerVideoRoutes(app: OpenAPIHono) {
           outputPath,
           crf: 23,
           preset: 'medium',
-          smartCopy: true
+          smartCopy: false
         })
       });
 
@@ -151,7 +151,7 @@ export function registerVideoRoutes(app: OpenAPIHono) {
           outputPath,
           crf: 23,
           preset: 'medium',
-          smartCopy: true
+          smartCopy: false
         })
       });
 
